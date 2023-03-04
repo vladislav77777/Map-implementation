@@ -1,0 +1,165 @@
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.LinkedList;
+
+interface Map<K, V> {
+    void put(K k, V v);
+ 
+    V get(K k);
+ 
+    V remove(K k);
+ 
+    int size();
+ 
+    boolean isEmpty();
+ 
+    Set<K> keySet();
+ 
+    Iterable<V> values();
+ 
+    Set<Entry<K, V>> entrySet();
+}
+ 
+class HashMapSeparateChaining<K, V> implements Map<K, V> {
+    List<Entry<K, V>>[] buckets;
+    int size;
+    private static final int DEFAULT_BUCKET_COUNT = 16;
+ 
+    public HashMapSeparateChaining() {
+        this(DEFAULT_BUCKET_COUNT);
+    }
+ 
+    public HashMapSeparateChaining(int capacity) {
+        size = 0;
+        buckets = new LinkedList[capacity];
+    }
+ 
+    private int hash(K key) {
+        return Math.abs(key.hashCode()) % buckets.length;
+    }
+ 
+    Entry<K, V> getEntry(K k) {
+        int bucket_index = hash(k);
+        if (buckets[bucket_index] == null) {
+            return null;
+        }
+        for (Entry<K, V> e : buckets[bucket_index]) {
+            if (k.equals(e.key)) {
+                return e;
+            }
+        }
+        return null;
+    }
+ 
+    @Override
+    public void put(K k, V v) {
+        int bucket_index = hash(k);
+ 
+        if (buckets[bucket_index] == null) {
+            buckets[bucket_index] = new LinkedList<>();
+        }
+        for (Entry<K, V> pair : buckets[bucket_index]) {
+            if (pair.key.equals(k)) {
+                pair.value = v;
+                return;
+            }
+        }
+        buckets[bucket_index].add(new Entry<>(k, v));
+        size++;
+ 
+        if (size > buckets.length * 0.75) {
+            resize(buckets.length * 2);
+        }
+    }
+ 
+    @Override
+    public V get(K k) {
+        Entry<K, V> e = getEntry(k);
+        if (e == null)
+            return null;
+        else
+            return e.value;
+    }
+ 
+    @Override
+    public V remove(K k) {
+        int bucket_index = hash(k);
+        if (buckets[bucket_index] == null)
+            return null;
+ 
+        for (Entry<K, V> pair : buckets[bucket_index]) {
+            if (pair.key.equals(k)) {
+                V vv = pair.value;
+                buckets[bucket_index].remove(pair);
+                size--;
+                if (size < buckets.length * 0.25) {
+                    resize(buckets.length / 2);
+                }
+                return vv;
+            }
+        }
+        return null;
+    }
+ 
+    @Override
+    public int size() {
+        return size;
+    }
+ 
+    @Override
+    public boolean isEmpty() {
+        return size == 0;
+    }
+ 
+    @Override
+    public Set<K> keySet() {
+        Set<K> ret = new HashSet<>();
+        for (List<Entry<K, V>> bucket : buckets) {
+            if (bucket != null) {
+                for (Entry<K, V> e : bucket) {
+                    ret.add(e.key);
+                }
+            }
+        }
+        return ret;
+    }
+ 
+    @Override
+    public Iterable<V> values() {
+        LinkedList<V> ret = new LinkedList<>();
+        for (List<Entry<K, V>> bucket : buckets)
+            if (bucket != null) {
+                for (Entry<K, V> e : bucket) {
+                    ret.add(e.value);
+                }
+            }
+        return ret;
+    }
+ 
+    @Override
+    public Set<Entry<K, V>> entrySet() {
+        Set<Entry<K, V>> ret = new HashSet<>();
+        for (List<Entry<K, V>> bucket : buckets) {
+            if (bucket != null) {
+                ret.addAll(bucket);
+            }
+        }
+        return ret;
+    }
+ 
+    private void resize(int newSize) {
+        List<Entry<K, V>>[] oldBuckets = buckets;
+        buckets = new LinkedList[newSize];
+        size = 0;
+        for (List<Entry<K, V>> oldBucket : oldBuckets) {
+            if (oldBucket == null) {
+                continue;
+            }
+            for (Entry<K, V> pair : oldBucket) {
+                put(pair.key, pair.value);
+            }
+        }
+    }
+}
